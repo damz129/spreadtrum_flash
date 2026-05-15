@@ -1165,6 +1165,7 @@ static void scan_data(uint8_t *buf, unsigned size, int flags) {
 
 static int is_dial_str(uint8_t *buf, unsigned len) {
 	uint8_t *p = buf;
+	if (*p != '#' && *p != '*') return 0;
 	if (len > 80) len = 80;
 	// strange code from Nokia phones
 	if (len >= 17 && !memcmp(buf, "#PW+12345678+?#", 17)) return 16;
@@ -1183,7 +1184,7 @@ static int check_dial_code(uint8_t *buf, unsigned size, uint32_t base, uint32_t 
 		if (size <= code) break;
 		if ((id2 - 1) >> 6 || (id1 - 1) >> 6) break;
 		if (p[3] - base >= size) break; // handler fn addr
-		if (is_dial_str(buf + code, size - code) < 1) break;
+		if (is_dial_str(buf + code, size - code) < 3) break;
 		return 1;
 	} while (0);
 	return 0;
@@ -1225,7 +1226,7 @@ static unsigned print_dial_codes(uint8_t *buf, unsigned size, uint32_t base, uin
 		uint32_t code = p[0] - base, id = p[1];
 		if (size <= code) break;
 		if (id >= 128) break;
-		if (is_dial_str(buf + code, size - code) < 1) break;
+		if (is_dial_str(buf + code, size - code) < 3) break;
 		if (offs == end)
 			printf("0x%x: language codes:\n", offs);
 		printf("0x%x: %2u %s\n", offs, id, buf + code);

@@ -14,6 +14,10 @@ Use this command to run a firmware scan and extract segments:
 
 * `unpack` command can create: `init[%u]_%x.bin pinmap.bin keymap.bin tfboot.bin`
 
+This command scans `user.bin` for dial codes:
+
+`./fphelper_t117 user.bin scan_user`  
+
 These commands decode compressed streams and require stream offset:
 
 `./fphelper_t117 flash.bin {copy|lzdec2|lzdec3} src_offset dst_size output.bin`  
