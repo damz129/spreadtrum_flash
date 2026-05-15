@@ -817,7 +817,38 @@ static unsigned print_dial_codes(uint8_t *buf, unsigned size, uint32_t base, uin
 		uint32_t code = p[0] - base, id1 = p[1], id2 = p[2];
 		printf("0x%x: %2u %2u %s", offs, id2, id1, buf + code);
 		{
-			const char *p =
+			const char *t, *p =
+				"####0000#\0" "version 2\0"
+				"####1040#\0" "net info\0"
+				"####2222#\0" "serial\0"
+				"#*8378#0#\0" "tests menu\0"
+				"#*8378#1#\0" "eng menu\0"
+				"#*8378#2#\0" "version 1\0"
+				"#*8378#3#\0" "prod info\0"
+				"#*8378#4#\0" "phone info\0"
+				"#*8378#5#\0" "chip test\0"
+				"#*8378#8#\0" "monkey test\0"
+				"#*8378#9#\0" "tf update\0"
+				"#*786646468#\0" "nv counting\0"
+				"#*786837#\0" "svn version\0"
+				"*#6789#\0" "oss licenses\0"
+				// Nokia/HMD
+				"*#0000#\0" "nokia version\0"
+				"*#6774#\0" "oss third party\0"
+				"*#7370#\0" "factory reset\0"
+				// other
+				"#*858*#\0" "hardware info\0"
+				"*#567765*#\0" "aging test\0"
+				"#*8888*#\0" "version 3\0"
+				"#*888*#\0" "version 4\0"
+				"*#066#\0" "update imei\0";
+
+			for (; *p; p += strlen(p) + 1) {
+				t = p; p += strlen(p) + 1;
+				if (!strcmp((char*)buf + code, t)) break;
+			}
+			if (!*p) {
+				p =
 				"\5\1" "tests menu\0"
 				"\5\2" "tests start\0"
 				"\5\3" "prod info\0"
@@ -831,8 +862,9 @@ static unsigned print_dial_codes(uint8_t *buf, unsigned size, uint32_t base, uin
 				// the list varies depending on the model
 				for (; *p; p += strlen(p + 2) + 3)
 					if (p[0] == (int)id2 && p[1] == (int)id1) { p += 2; break; }
-				if (*p) printf(" (%s)", p);
 			}
+			if (*p) printf(" (%s)", p);
+		}
 		printf("\n");
 	}
 	for (offs = end; size - offs >= 8; offs += 8) {
