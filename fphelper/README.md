@@ -24,6 +24,10 @@ Use this command to run a data scan and extract FAT disk images:
 
 * `extract_data` command can create: `fat_%u.img`
 
+This command scans `user.bin` for dial codes:
+
+`./fphelper user.bin scan_user`  
+
 This command will print hints on how to flash the `sdboot` binary to the phone:
 
 `./fphelper flash.bin sdboot`  

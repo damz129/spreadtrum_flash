@@ -1008,6 +1008,7 @@ static void scan_data(uint8_t *buf, unsigned size, int flags) {
 	unsigned size2;
 	blk_list_t *blk_list = NULL;
 	fat_list_t *fat_list = NULL;
+	if (size < size_req) return;
 	size &= ~3;
 	for (i = 0; i < size - size_req + 1; i += 4) {
 		if (!(i & 0xff)) do {
@@ -1162,6 +1163,94 @@ static void scan_data(uint8_t *buf, unsigned size, int flags) {
 	FREE_LIST(fat_list, fat_list_t);
 }
 
+static int is_dial_str(uint8_t *buf, unsigned len) {
+	uint8_t *p = buf;
+	if (len > 80) len = 80;
+	// strange code from Nokia phones
+	if (len >= 17 && !memcmp(buf, "#PW+12345678+?#", 17)) return 16;
+	do {
+		int a = *p++;
+		if (!a) return p - buf - 1;
+		if (!strchr("#*0123456789", a)) break;
+	} while (--len);
+	return 0;
+}
+
+static int check_dial_code(uint8_t *buf, unsigned size, uint32_t base, uint32_t offs) {
+	uint32_t *p = (uint32_t*)(buf + offs);
+	uint32_t code = p[0] - base, id1 = p[1], id2 = p[2];
+	do {
+		if (size <= code) break;
+		if ((id2 - 1) >> 6 || (id1 - 1) >> 6) break;
+		if (p[3] - base >= size) break; // handler fn addr
+		if (is_dial_str(buf + code, size - code) < 1) break;
+		return 1;
+	} while (0);
+	return 0;
+}
+
+static unsigned print_dial_codes(uint8_t *buf, unsigned size, uint32_t base, uint32_t offs) {
+	uint32_t end = offs + 16;
+	for (; offs >= 16; offs -= 16)
+		if (!check_dial_code(buf, size, base, offs - 16)) break;
+	for (; size - end >= 16; end += 16)
+		if (!check_dial_code(buf, size, base, end)) break;
+	printf("0x%x: dial codes:\n", offs);
+
+	for (; offs < end; offs += 16) {
+		uint32_t *p = (uint32_t*)(buf + offs);
+		uint32_t code = p[0] - base, id1 = p[1], id2 = p[2];
+		printf("0x%x: %2u %2u %s", offs, id2, id1, buf + code);
+		{
+			const char *p =
+				"\5\1" "tests menu\0"
+				"\5\2" "tests start\0"
+				"\5\3" "prod info\0"
+				"\5\4" "phone info\0"
+				"\5\6" "serial\0"
+				"\5\7" "net info\0"
+				"\xb\x8" "eng menu\0"
+				"\xb\x9" "version 1\0"
+				"\xb\xa" "version 2\0";
+				// items that come after are unstable
+				// the list varies depending on the model
+				for (; *p; p += strlen(p + 2) + 3)
+					if (p[0] == (int)id2 && p[1] == (int)id1) { p += 2; break; }
+				if (*p) printf(" (%s)", p);
+			}
+		printf("\n");
+	}
+	for (offs = end; size - offs >= 8; offs += 8) {
+		uint32_t *p = (uint32_t*)(buf + offs);
+		uint32_t code = p[0] - base, id = p[1];
+		if (size <= code) break;
+		if (id >= 128) break;
+		if (is_dial_str(buf + code, size - code) < 1) break;
+		if (offs == end)
+			printf("0x%x: language codes:\n", offs);
+		printf("0x%x: %2u %s\n", offs, id, buf + code);
+	}
+	return offs;
+}
+
+static void scan_user(uint8_t *buf, unsigned size, uint32_t base) {
+	unsigned i, size_req = 0x10;
+	if (size < size_req) return;
+	size &= ~3;
+	for (i = 0; i < size - size_req + 1; i += 4) {
+		uint32_t *p = (uint32_t*)(buf + i);
+		do {
+			uint32_t code = p[0] - base, id1 = p[1], id2 = p[2];
+			if (size <= code) break;
+			if (p[3] - base >= size) break; // handler fn addr
+			if (id2 != 5 && id2 != 0xb) break;
+			if (id1 - 1 >= 10) break;
+			if (is_dial_str(buf + code, size - code) < 1) break;
+			i = print_dial_codes(buf, size, base, i) - 4;
+		} while (0);
+	}
+}
+
 #define ERR_EXIT(...) \
 	do { fprintf(stderr, __VA_ARGS__); return 1; } while (0)
 
@@ -1279,8 +1368,8 @@ static int drps_decode(uint8_t *mem, size_t size,
 
 				RUN_LZMADEC(mem + offs)
 				if (result != size2) {
-					printf("lzmadec: src = 0x%zx-0x%zx, size = 0x%zx, dst_size = %zd / %zd\n",
-							src_addr + offs, src_addr + offs + src_size, src_size, result, size2);
+					printf("lzmadec: src = 0x%zx, size = 0x%x, dst_size = %zd / %zd\n",
+							src_addr + offs, next - offs, result, size2);
 					FATAL();
 				}
 			}
@@ -1288,8 +1377,8 @@ static int drps_decode(uint8_t *mem, size_t size,
 			src_size = colb_size;
 			RUN_LZMADEC(mem)
 			if (result != size2) {
-				printf("lzmadec: src = 0x%zx-0x%zx, size = 0x%zx, dst_size = %zd / %zd\n",
-						src_addr, src_addr + src_size, src_size, result, size2);
+				printf("lzmadec: src = 0x%zx, size = 0x%x, dst_size = %zd / %zd\n",
+						src_addr, colb_size, result, size2);
 				FATAL();
 			}
 			if (clues.drps_type == 1 && clues.kern_addr)
@@ -1633,6 +1722,9 @@ int main(int argc, char **argv) {
 			argc -= 1; argv += 1;
 		} else if (!strcmp(argv[1], "scan_data")) {
 			scan_data(mem, size, 0);
+			argc -= 1; argv += 1;
+		} else if (!strcmp(argv[1], "scan_user")) {
+			scan_user(mem, size, 0x08000000);
 			argc -= 1; argv += 1;
 		} else if (!strcmp(argv[1], "extract_data")) {
 			scan_data(mem, size, 1);
