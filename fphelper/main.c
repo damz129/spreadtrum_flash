@@ -476,7 +476,8 @@ static int check_keymap(const void *buf, unsigned size) {
 		if (a - 0x70 < 3) continue;
 		// exception: BQ3586 (0x69)
 		// exception: Texet TM-122, TM-130, TM-D324 (0x69..0x6d)
-		if (a - 0x69 < 5) continue;
+		// exception: meanIT Veteran (0x68)
+		if (a - 0x68 < 6) continue;
 		if (a - 1 >= 0x39) break;
 	}
 	// printf("!!! check_keymap: %d, %d, %d\n", i, empty, empty2);
