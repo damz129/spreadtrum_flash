@@ -24,6 +24,7 @@ jobs:
 
     - name: Compile
       run: |
+        sudo apt install libusb-1.0-0-dev
         export TOOLCHAIN=$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm
         export CLANG=$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi21-clang
         make all TOOLCHAIN=$TOOLCHAIN CC=$CLANG
@@ -31,6 +32,6 @@ jobs:
     - name: Upload
       uses: actions/upload-artifact@v6
       with:
-        name: fpdoom-nokia-8210-4g
+        name: t117_fdl1
         path: |
           t117_fdl/*.bin
