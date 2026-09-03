@@ -1,0 +1,36 @@
+name: Build fdl
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-ums9117:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Source Code
+      uses: actions/checkout@v6
+
+    - name: Install Java
+      uses: actions/setup-java@v6
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Install Android NDK
+      uses: android-actions/setup-android@v4
+      with:
+        ndk-version: '25.2.9519653'
+
+    - name: Compile
+      run: |
+        export TOOLCHAIN=$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm
+        export CLANG=$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi21-clang
+        make all TOOLCHAIN=$TOOLCHAIN CC=$CLANG
+
+    - name: Upload
+      uses: actions/upload-artifact@v6
+      with:
+        name: fpdoom-nokia-8210-4g
+        path: |
+          t117_fdl/*.bin
