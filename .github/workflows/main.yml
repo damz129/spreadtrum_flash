@@ -26,7 +26,8 @@ jobs:
       run: |
         export TOOLCHAIN=$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm
         export CLANG=$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi21-clang
-        make all TOOLCHAIN=$TOOLCHAIN CC=$CLANG $(pkg-config --cflags --libs libusb-1.0)
+        cd t117_fdl
+        make all TOOLCHAIN=$TOOLCHAIN CC=$CLANG
 
     - name: Upload
       uses: actions/upload-artifact@v6
