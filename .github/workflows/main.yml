@@ -24,10 +24,9 @@ jobs:
 
     - name: Compile
       run: |
-        sudo apt install libusb-1.0-0-dev
         export TOOLCHAIN=$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm
         export CLANG=$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi21-clang
-        make all TOOLCHAIN=$TOOLCHAIN CC=$CLANG
+        make all TOOLCHAIN=$TOOLCHAIN CC=$CLANG $(pkg-config --cflags --libs libusb-1.0)
 
     - name: Upload
       uses: actions/upload-artifact@v6
